@@ -23,16 +23,18 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s == "yesterday":
         return today - timedelta(days=1)
 
-# 2. Relative Expressions (e.g., "5 days before yesterday", "in 3 days")
+    # 2. Relative Expressions (e.g., "5 days before yesterday", "in 3 days")
     num_map = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
-    
+
     # Check for "in X days" specifically
-    in_match = re.search(r"in\s+(\d+|one|two|three|four|five)\s+(day|week|month|year)s?", s)
+    in_match = re.search(
+        r"in\s+(\d+|one|two|three|four|five)\s+(day|week|month|year)s?", s
+    )
     if in_match:
         num_str, unit = in_match.groups()
         num = int(num_str) if num_str.isdigit() else num_map.get(num_str, 1)
         delta_args = {f"{unit}s": num}
-        return today + relativedelta(**delta_args) # type: ignore
+        return today + relativedelta(**delta_args)  # type: ignore
 
     # Existing before/after logic
     rel_pattern = (
@@ -46,12 +48,17 @@ def parse(s: str, today: Optional[date] = None) -> date:
         base_date = parse(base_str, today=today)
         multiplier = -1 if direction == "before" else 1
         delta_args = {f"{unit}s": num * multiplier}
-        return base_date + relativedelta(**delta_args) # type: ignore
+        return base_date + relativedelta(**delta_args)  # type: ignore
 
     # 3. Weekday logic (e.g., "next tuesday")
     weekdays = {
-        "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
-        "friday": 4, "saturday": 5, "sunday": 6
+        "monday": 0,
+        "tuesday": 1,
+        "wednesday": 2,
+        "thursday": 3,
+        "friday": 4,
+        "saturday": 5,
+        "sunday": 6,
     }
     if s.startswith("next ") and s.split()[-1] in weekdays:
         target_weekday = weekdays[s.split()[-1]]
