@@ -8,6 +8,13 @@ dependencies = [
     "python-dateutil>=2.9.0.post0",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/nldate"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [dependency-groups]
 dev = [
     "mypy>=2.1.0",
