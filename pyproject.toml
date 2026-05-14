@@ -15,3 +15,6 @@ dev = [
     "ruff>=0.15.13",
     "types-python-dateutil>=2.9.0.20260508",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
