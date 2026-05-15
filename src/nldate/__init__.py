@@ -13,7 +13,8 @@ def parse(s: str, today: Optional[date] = None) -> date:
     s = s.lower().strip()
 
     # 1. Basic Constants
-    if s == "today":
+    # UPDATED: Added "now" as a synonym for today
+    if s in ("today", "now"):
         return today
     if s == "tomorrow":
         return today + timedelta(days=1)
@@ -21,14 +22,12 @@ def parse(s: str, today: Optional[date] = None) -> date:
         return today - timedelta(days=1)
 
     # 2. Relative Expressions
-    # UPDATED: Added "a" and "an" to the mapping
     num_map = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
 
-    # UPDATED: Regex now includes "a|an"
     num_pattern = r"(\d+|a|an|one|two|three|four|five)"
     unit_pattern = r"\s+(day|week|month|year)s?"
 
-    # Handle "X units ago" (e.g., 'a week ago', '3 days ago')
+    # Handle "X units ago"
     ago_match = re.search(num_pattern + unit_pattern + r"\s+ago", s)
     if ago_match:
         num_str, unit = ago_match.groups()
@@ -50,6 +49,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if match:
         num_str, unit, direction, base_str = match.groups()
         num = int(num_str) if num_str.isdigit() else num_map.get(num_str, 1)
+        # Recursion allows base_str to be "now", "yesterday", etc.
         base_date = parse(base_str, today=today)
         multiplier = -1 if direction == "before" else 1
         delta_args = {f"{unit}s": num * multiplier}
