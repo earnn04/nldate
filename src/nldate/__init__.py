@@ -22,9 +22,11 @@ def parse(s: str, today: Optional[date] = None) -> date:
 
     # 2. Relative Expressions
     num_map = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
-    
+
     # NEW: Handle "X units ago" (e.g., '3 days ago')
-    ago_match = re.search(r"(\d+|one|two|three|four|five)\s+(day|week|month|year)s?\s+ago", s)
+    ago_match = re.search(
+        r"(\d+|one|two|three|four|five)\s+(day|week|month|year)s?\s+ago", s
+    )
     if ago_match:
         num_str, unit = ago_match.groups()
         num = int(num_str) if num_str.isdigit() else num_map.get(num_str, 1)
@@ -32,7 +34,9 @@ def parse(s: str, today: Optional[date] = None) -> date:
         return today + relativedelta(**delta_args)
 
     # Handle "in X units"
-    in_match = re.search(r"in\s+(\d+|one|two|three|four|five)\s+(day|week|month|year)s?", s)
+    in_match = re.search(
+        r"in\s+(\d+|one|two|three|four|five)\s+(day|week|month|year)s?", s
+    )
     if in_match:
         num_str, unit = in_match.groups()
         num = int(num_str) if num_str.isdigit() else num_map.get(num_str, 1)
@@ -51,11 +55,20 @@ def parse(s: str, today: Optional[date] = None) -> date:
         return base_date + relativedelta(**delta_args)
 
     # 3. Weekday logic
-    weekdays = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6}
+    weekdays = {
+        "monday": 0,
+        "tuesday": 1,
+        "wednesday": 2,
+        "thursday": 3,
+        "friday": 4,
+        "saturday": 5,
+        "sunday": 6,
+    }
     if s.startswith("next ") and s.split()[-1] in weekdays:
         target_weekday = weekdays[s.split()[-1]]
         days_ahead = (target_weekday - today.weekday() + 7) % 7
-        if days_ahead == 0: days_ahead = 7
+        if days_ahead == 0:
+            days_ahead = 7
         return today + timedelta(days=days_ahead)
 
     # 4. Absolute date fallback
