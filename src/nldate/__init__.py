@@ -7,9 +7,6 @@ from dateutil.relativedelta import relativedelta
 
 
 def parse(s: str, today: Optional[date] = None) -> date:
-    """
-    Parses a natural language date string into a date object.
-    """
     if today is None:
         today = date.today()
 
@@ -23,24 +20,27 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s == "yesterday":
         return today - timedelta(days=1)
 
-    # 2. Relative Expressions (e.g., "5 days before yesterday", "in 3 days")
+    # 2. Relative Expressions
     num_map = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
+    
+    # NEW: Handle "X units ago" (e.g., '3 days ago')
+    ago_match = re.search(r"(\d+|one|two|three|four|five)\s+(day|week|month|year)s?\s+ago", s)
+    if ago_match:
+        num_str, unit = ago_match.groups()
+        num = int(num_str) if num_str.isdigit() else num_map.get(num_str, 1)
+        delta_args = {f"{unit}s": -num}  # Negative for "ago"
+        return today + relativedelta(**delta_args)
 
-    # Check for "in X days" specifically
-    in_match = re.search(
-        r"in\s+(\d+|one|two|three|four|five)\s+(day|week|month|year)s?", s
-    )
+    # Handle "in X units"
+    in_match = re.search(r"in\s+(\d+|one|two|three|four|five)\s+(day|week|month|year)s?", s)
     if in_match:
         num_str, unit = in_match.groups()
         num = int(num_str) if num_str.isdigit() else num_map.get(num_str, 1)
         delta_args = {f"{unit}s": num}
-        return today + relativedelta(**delta_args)  # type: ignore
+        return today + relativedelta(**delta_args)
 
-    # Existing before/after logic
-    rel_pattern = (
-        r"(\d+|one|two|three|four|five)\s+(day|week|month|year)s?\s+"
-        r"(before|after|from)\s+(.*)"
-    )
+    # Handle "before/after/from"
+    rel_pattern = r"(\d+|one|two|three|four|five)\s+(day|week|month|year)s?\s+(before|after|from)\s+(.*)"
     match = re.search(rel_pattern, s)
     if match:
         num_str, unit, direction, base_str = match.groups()
@@ -48,28 +48,18 @@ def parse(s: str, today: Optional[date] = None) -> date:
         base_date = parse(base_str, today=today)
         multiplier = -1 if direction == "before" else 1
         delta_args = {f"{unit}s": num * multiplier}
-        return base_date + relativedelta(**delta_args)  # type: ignore
+        return base_date + relativedelta(**delta_args)
 
-    # 3. Weekday logic (e.g., "next tuesday")
-    weekdays = {
-        "monday": 0,
-        "tuesday": 1,
-        "wednesday": 2,
-        "thursday": 3,
-        "friday": 4,
-        "saturday": 5,
-        "sunday": 6,
-    }
+    # 3. Weekday logic
+    weekdays = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6}
     if s.startswith("next ") and s.split()[-1] in weekdays:
         target_weekday = weekdays[s.split()[-1]]
         days_ahead = (target_weekday - today.weekday() + 7) % 7
-        if days_ahead == 0:
-            days_ahead = 7
+        if days_ahead == 0: days_ahead = 7
         return today + timedelta(days=days_ahead)
 
-    # 4. Absolute date fallback using dateutil
+    # 4. Absolute date fallback
     try:
-        # We use a datetime default so du_parse returns a datetime we can call .date() on
         default_dt = datetime.combine(today, datetime.min.time())
         return du_parse(s, default=default_dt).date()
     except Exception:
