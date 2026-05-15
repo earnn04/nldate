@@ -28,13 +28,15 @@ def parse(s: str, today: Optional[date] = None) -> date:
         num_map = {
             "a": 1,
             "an": 1,
+            "the": 1,  # Added "the" as a synonym for 1
             "one": 1,
             "two": 2,
             "three": 3,
             "four": 4,
             "five": 5,
         }
-        pattern = r"(\d+|a|an|one|two|three|four|five)\s+(day|week|month|year)s?"
+        # Added "the" to the regex pattern
+        pattern = r"(\d+|a|an|the|one|two|three|four|five)\s+(day|week|month|year)s?"
         kwargs: dict[str, int] = {}
         for m in re.finditer(pattern, text):
             # Unpacking without brackets
@@ -60,7 +62,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
     # Handle before/after/from
     for pivot in [" before ", " after ", " from "]:
         if pivot in s:
-            # Unpacking without brackets to avoid the UI bug!
+            # Unpacking without brackets
             duration_str, base_str = s.split(pivot, 1)
             delta_args = extract_delta(duration_str)
             if delta_args:
