@@ -23,48 +23,53 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s == "yesterday":
         return today - timedelta(days=1)
 
+    # Helper to extract all time units from a string
+    def extract_delta(text: str) -> dict[str, int]:
+        num_map = {
+            "a": 1,
+            "an": 1,
+            "one": 1,
+            "two": 2,
+            "three": 3,
+            "four": 4,
+            "five": 5,
+        }
+        pattern = r"(\d+|a|an|one|two|three|four|five)\s+(day|week|month|year)s?"
+        kwargs: dict[str, int] = {}
+        for m in re.finditer(pattern, text):
+            # Unpacking without brackets
+            val, unit = m.groups()
+            num = int(val) if val.isdigit() else num_map.get(val, 1)
+            kwargs[f"{unit}s"] = kwargs.get(f"{unit}s", 0) + num
+        return kwargs
+
     # 2. Relative Expressions
-    num_map = {
-        "a": 1,
-        "an": 1,
-        "one": 1,
-        "two": 2,
-        "three": 3,
-        "four": 4,
-        "five": 5,
-    }
 
-    num_pattern = r"(\d+|a|an|one|two|three|four|five)"
-    unit_pattern = r"\s+(day|week|month|year)s?"
+    # Handle "ago"
+    if s.endswith(" ago"):
+        delta_args = extract_delta(s)
+        if delta_args:
+            return today + relativedelta(**{k: -v for k, v in delta_args.items()})  # type: ignore
 
-    # Handle "X units ago" (e.g., 'a week ago', '3 days ago')
-    ago_match = re.search(num_pattern + unit_pattern + r"\s+ago", s)
-    if ago_match:
-        num_str, unit = ago_match.groups()
-        num = int(num_str) if num_str.isdigit() else num_map.get(num_str, 1)
-        delta_args = {f"{unit}s": -num}
-        return today + relativedelta(**delta_args)  # type: ignore
+    # Handle "in X"
+    if s.startswith("in "):
+        delta_args = extract_delta(s)
+        if delta_args:
+            return today + relativedelta(**delta_args)  # type: ignore
 
-    # Handle "in X units" (e.g., 'in 3 days')
-    in_match = re.search(r"in\s+" + num_pattern + unit_pattern, s)
-    if in_match:
-        num_str, unit = in_match.groups()
-        num = int(num_str) if num_str.isdigit() else num_map.get(num_str, 1)
-        delta_args = {f"{unit}s": num}
-        return today + relativedelta(**delta_args)  # type: ignore
+    # Handle before/after/from
+    for pivot in [" before ", " after ", " from "]:
+        if pivot in s:
+            # Unpacking without brackets to avoid the UI bug!
+            duration_str, base_str = s.split(pivot, 1)
+            delta_args = extract_delta(duration_str)
+            if delta_args:
+                base_date = parse(base_str, today=today)
+                multiplier = -1 if "before" in pivot else 1
+                kwargs = {k: v * multiplier for k, v in delta_args.items()}
+                return base_date + relativedelta(**kwargs)  # type: ignore
 
-    # Handle "before/after/from" (e.g., '2 weeks from now')
-    rel_pattern = num_pattern + unit_pattern + r"\s+(before|after|from)\s+(.*)"
-    match = re.search(rel_pattern, s)
-    if match:
-        num_str, unit, direction, base_str = match.groups()
-        num = int(num_str) if num_str.isdigit() else num_map.get(num_str, 1)
-        base_date = parse(base_str, today=today)
-        multiplier = -1 if direction == "before" else 1
-        delta_args = {f"{unit}s": num * multiplier}
-        return base_date + relativedelta(**delta_args)  # type: ignore
-
-    # 3. Weekday logic (UI-bug-proof version)
+    # 3. Weekday logic
     weekdays = {
         "monday": 0,
         "tuesday": 1,
@@ -76,6 +81,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
     }
     words = s.split()
     if len(words) == 2:
+        # Unpacking without brackets
         modifier, day_name = words
         if modifier in ("next", "last") and day_name in weekdays:
             target_weekday = weekdays[day_name]
